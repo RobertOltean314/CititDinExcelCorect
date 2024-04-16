@@ -1,59 +1,65 @@
 package org.example;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.FormulaEvaluator;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Iterator;
 
+import org.apache.poi.ss.usermodel.*;
+
 public class Main {
+
     public static void main(String[] args) {
         try {
             FileInputStream file = new FileInputStream(new File("CititDinFisier.xlsx"));
-
-            XSSFWorkbook workbook = new XSSFWorkbook(file);
-
-            FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
-
-            XSSFSheet sheet = workbook.getSheetAt(0);
+            Workbook workbook = WorkbookFactory.create(file);
+            Sheet sheet = workbook.getSheetAt(0);
+            FormulaEvaluator formulaEvaluator = workbook.getCreationHelper().createFormulaEvaluator();
 
             Iterator<Row> rowIterator = sheet.iterator();
-
             while (rowIterator.hasNext()) {
                 Row row = rowIterator.next();
-
-                Iterator<Cell> cellIterator = row.cellIterator();
-
-                while (cellIterator.hasNext()) {
-                    Cell cell = cellIterator.next();
-
-                    switch (evaluator.evaluateInCell(cell).getCellType()) {
-                        case NUMERIC:
-                            System.out.print(cell.getNumericCellValue() + "\t\t");
-                            break;
-                        case STRING:
-                            System.out.print(cell.getStringCellValue() + "\t\t");
-                            break;
-                        case FORMULA:
-                            System.out.print(cell.getCellFormula() + "\t\t");
-                            break;
-                    }
-
-                }
-                System.out.println();
+                Cell cellA = row.getCell(0);
+                Cell cellB = row.getCell(1);
+                Cell cellC = row.createCell(2);
+                String concatValue = getCellValueAsString(cellA) + getCellValueAsString(cellB);
+                System.out.println(concatValue);
+                cellC.setCellValue(concatValue);
             }
-            file.close();
-        } catch (FileNotFoundException e) {
-            System.out.println("Fisierul nu a fost gasit");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
 
+            FileOutputStream outFile = new FileOutputStream(new File("Output.xlsx"));
+            workbook.write(outFile);
+            outFile.close();
+            file.close();
+            workbook.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static String getCellValueAsString(Cell cell) {
+        if (cell == null) {
+            return "";
+        }
+        switch (cell.getCellType()) {
+            case NUMERIC:
+                return String.valueOf((int) cell.getNumericCellValue());
+            case STRING:
+                return cell.getStringCellValue();
+            case FORMULA:
+                FormulaEvaluator formulaEvaluator = cell.getSheet().getWorkbook().getCreationHelper().createFormulaEvaluator();
+                CellValue cellValue = formulaEvaluator.evaluate(cell);
+                if (cellValue.getCellType() == CellType.NUMERIC) {
+                    return String.valueOf((int) cellValue.getNumberValue());
+                } else if (cellValue.getCellType() == CellType.STRING) {
+                    return cellValue.getStringValue();
+                }
+            default:
+                return "";
+        }
     }
 }
